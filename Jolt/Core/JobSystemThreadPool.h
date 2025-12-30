@@ -24,6 +24,13 @@ using std::thread;
 /// JobSystem built on top of whatever job system your project uses.
 class JPH_EXPORT JobSystemThreadPool final : public JobSystemWithBarrier
 {
+private:
+	// Helper struct to pad atomic head to cache line size to avoid false sharing
+	struct alignas(JPH_CACHE_LINE_SIZE) PaddedHead
+	{
+		atomic<uint> value;
+	};
+
 public:
 	JPH_OVERRIDE_NEW_DELETE
 
@@ -88,7 +95,7 @@ private:
 	atomic<Job *>			mQueue[cQueueLength];
 
 	// Head and tail of the queue, do this value modulo cQueueLength - 1 to get the element in the mQueue array
-	atomic<uint> *			mHeads = nullptr;								///< Per executing thread the head of the current queue
+	PaddedHead *			mHeads = nullptr;								///< Per executing thread the head of the current queue
 	alignas(JPH_CACHE_LINE_SIZE) atomic<uint> mTail = 0;					///< Tail (write end) of the queue
 
 	// Semaphore used to signal worker threads that there is new work

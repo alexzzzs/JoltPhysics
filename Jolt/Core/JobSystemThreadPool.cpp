@@ -50,9 +50,9 @@ void JobSystemThreadPool::StartThreads([[maybe_unused]] int inNumThreads)
 	mQuit = false;
 
 	// Allocate heads
-	mHeads = reinterpret_cast<atomic<uint> *>(Allocate(sizeof(atomic<uint>) * inNumThreads));
+	mHeads = reinterpret_cast<PaddedHead *>(Allocate(sizeof(PaddedHead) * inNumThreads));
 	for (int i = 0; i < inNumThreads; ++i)
-		mHeads[i] = 0;
+		mHeads[i].value = 0;
 
 	// Start running threads
 	JPH_ASSERT(mThreads.empty());
@@ -141,7 +141,7 @@ uint JobSystemThreadPool::GetHead() const
 	// Find the minimal value across all threads
 	uint head = mTail;
 	for (size_t i = 0; i < mThreads.size(); ++i)
-		head = min(head, mHeads[i].load());
+		head = min(head, mHeads[i].value.load());
 	return head;
 }
 
@@ -312,7 +312,7 @@ void JobSystemThreadPool::ThreadMain(int inThreadIndex)
 	// Call the thread init function
 	mThreadInitFunction(inThreadIndex);
 
-	atomic<uint> &head = mHeads[inThreadIndex];
+	atomic<uint> &head = mHeads[inThreadIndex].value;
 
 	while (!mQuit)
 	{
